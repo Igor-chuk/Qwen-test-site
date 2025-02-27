@@ -99,7 +99,7 @@
 
                 const result = await response.json();
                 if (result.status === 'success') {
-                    addMessageToChat(result.data.replace(/\n/g, '<br>'), 'ai');
+                    addMessageToChat(result.data.replace(/\n/g, '<br>').replace(/</g, '&lt').replace(/>/g, '&gt'), 'ai');
                 } else {
                     addMessageToChat('Ошибка: ' + result.message, 'error');
                 }
