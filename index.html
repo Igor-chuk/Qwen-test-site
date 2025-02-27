@@ -62,6 +62,7 @@
 <body>
     <div class="chat-container" id="chatContainer"></div>
     <div class="input-container">
+        <input type="checkbox" id="check" />
         <input type="text" id="userInput" placeholder="Введите сообщение..." autocomplete="off">
         <button onclick="sendMessage()">Отправить</button>
     </div>
@@ -86,7 +87,7 @@
                     content: msg.content,
                     extra: {},
                     chat_type: "t2t",
-                    feature_config: { thinking_enabled: false } // Изменение здесь
+                    feature_config: { thinking_enabled: document.getElementById('check').checked } // Изменение здесь
                 }));
 
                 // Отправляем запрос
