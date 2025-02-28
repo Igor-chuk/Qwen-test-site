@@ -91,10 +91,10 @@
                 }));
 
                 // Отправляем запрос
-                const response = await fetch('https://qwen-server.vercel.app/api/process', {
+                const response = await fetch('https://oceanic-noon-orchid.glitch.me/api/chat', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ messages: formattedMessages })
+                    body: JSON.stringify({ messages: formattedMessages, model: "qwen-max-latest", token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjYxNmU4ODY2LWYzMzUtNDY2MC05ODNhLWE5NmE1MjllNzUxMSIsImV4cCI6MTc0MDc3MTUxMH0.1QbsU-zEwpOtx-eBftHOYL0jfHTc6rAMCulcFYAInk8" })
                 });
 
                 const result = await response.json();
