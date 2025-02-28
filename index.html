@@ -33,10 +33,21 @@
             background: #f0f2f5;
             align-self: flex-start;
         }
+        .error-msg {
+            background: #f8d7da;
+            color: #842029;
+        }
         .input-container {
             margin-top: 20px;
             display: flex;
             gap: 10px;
+            align-items: center;
+        }
+        .thinking-option {
+            display: flex;
+            align-items: center;
+            margin-right: 10px;
+            font-size: 14px;
         }
         #userInput {
             flex: 1;
@@ -62,9 +73,12 @@
 <body>
     <div class="chat-container" id="chatContainer"></div>
     <div class="input-container">
-        <input type="checkbox" id="check" />
+        <div class="thinking-option">
+            <input type="checkbox" id="check" />
+            <label for="check">Включить мышление</label>
+        </div>
         <input type="text" id="userInput" placeholder="Введите сообщение..." autocomplete="off">
-        <button onclick="sendMessage()">Отправить</button>
+        <button id="sendButton" onclick="sendMessage()">Отправить</button>
     </div>
 
     <script>
@@ -72,6 +86,7 @@
 
         async function sendMessage() {
             const input = document.getElementById('userInput');
+            const sendButton = document.getElementById('sendButton');
             const message = input.value.trim();
             if (!message) return;
 
@@ -79,34 +94,51 @@
             addMessageToChat(message, 'user');
             input.value = '';
             input.disabled = true;
+            sendButton.disabled = true;
 
             try {
-                // Формируем payload с отключенным thinking_enabled
+                // Собираем все предыдущие сообщения
                 const formattedMessages = messagesHistory.map(msg => ({
                     role: msg.role,
                     content: msg.content,
-                    extra: {},
-                    chat_type: "t2t",
-                    feature_config: { thinking_enabled: document.getElementById('check').checked } // Изменение здесь
+                    extra: {}
                 }));
+
+                // Настройка параметров запроса
+                const requestData = {
+                    chat_type: "t2t",
+                    messages: formattedMessages,
+                    model: "qwen-max-latest",
+                    stream: false,
+                    token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjYxNmU4ODY2LWYzMzUtNDY2MC05ODNhLWE5NmE1MjllNzUxMSIsImV4cCI6MTc0MDc3MTUxMH0.1QbsU-zEwpOtx-eBftHOYL0jfHTc6rAMCulcFYAInk8"
+                };
+
+                // Добавляем параметр thinking_enabled, если чекбокс отмечен
+                if (document.getElementById('check').checked) {
+                    requestData.feature_config = { thinking_enabled: true };
+                }
 
                 // Отправляем запрос
                 const response = await fetch('https://oceanic-noon-orchid.glitch.me/api/chat', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ messages: formattedMessages, model: "qwen-max-latest", token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjYxNmU4ODY2LWYzMzUtNDY2MC05ODNhLWE5NmE1MjllNzUxMSIsImV4cCI6MTc0MDc3MTUxMH0.1QbsU-zEwpOtx-eBftHOYL0jfHTc6rAMCulcFYAInk8" })
+                    body: JSON.stringify(requestData)
                 });
 
                 const result = await response.json();
-                if (result.status === 'success') {
-                    addMessageToChat(result.data.replace(/</g, '&lt').replace(/>/g, '&gt').replace(/\n/g, '<br>'), 'ai');
+                
+                if (response.ok) {
+                    const botResponse = result.choices[0].message.content;
+                    addMessageToChat(botResponse, 'ai');
                 } else {
-                    addMessageToChat('Ошибка: ' + result.message, 'error');
+                    addMessageToChat('Ошибка: ' + (result.error || 'Неизвестная ошибка'), 'error');
                 }
             } catch (error) {
-                addMessageToChat('Сетевая ошибка', 'error');
+                console.error('Ошибка запроса:', error);
+                addMessageToChat('Сетевая ошибка: ' + error.message, 'error');
             } finally {
                 input.disabled = false;
+                sendButton.disabled = false;
                 input.focus();
             }
         }
@@ -123,8 +155,20 @@
 
             // Создаем элемент сообщения
             const messageDiv = document.createElement('div');
-            messageDiv.className = `message ${type === 'user' ? 'user-msg' : 'ai-msg'}`;
-            messageDiv.innerHTML = `<div>${text}</div>`;
+            messageDiv.className = `message ${type === 'user' ? 'user-msg' : type === 'ai' ? 'ai-msg' : 'error-msg'}`;
+            
+            // Безопасное отображение HTML
+            if (type === 'ai') {
+                // Преобразуем переносы строк в <br> для сообщений ИИ
+                text = text.replace(/\n/g, '<br>');
+            }
+            
+            // Экранируем HTML для предотвращения XSS атак
+            const safeText = type === 'ai' ? 
+                text.replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/&lt;br&gt;/g, '<br>') : 
+                text.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            
+            messageDiv.innerHTML = safeText;
             
             chatContainer.appendChild(messageDiv);
             chatContainer.scrollTop = chatContainer.scrollHeight;
